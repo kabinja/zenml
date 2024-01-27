@@ -2473,6 +2473,7 @@ class Client(metaclass=ClientMetaClass):
         name: Optional[str] = None,
         workspace_id: Optional[Union[str, UUID]] = None,
         pipeline_id: Optional[Union[str, UUID]] = None,
+        pipeline_name: Optional[str] = None,
         user_id: Optional[Union[str, UUID]] = None,
         stack_id: Optional[Union[str, UUID]] = None,
         schedule_id: Optional[Union[str, UUID]] = None,
@@ -2499,6 +2500,7 @@ class Client(metaclass=ClientMetaClass):
             updated: Use the last updated date for filtering
             workspace_id: The id of the workspace to filter by.
             pipeline_id: The id of the pipeline to filter by.
+            pipeline_name: The name of the pipeline to filter by.
             user_id: The id of the user to filter by.
             stack_id: The id of the stack to filter by.
             schedule_id: The id of the schedule to filter by.
@@ -2529,6 +2531,7 @@ class Client(metaclass=ClientMetaClass):
             name=name,
             workspace_id=workspace_id,
             pipeline_id=pipeline_id,
+            pipeline_name=pipeline_name,
             schedule_id=schedule_id,
             build_id=build_id,
             deployment_id=deployment_id,
@@ -2713,6 +2716,7 @@ class Client(metaclass=ClientMetaClass):
         name: Optional[str] = None,
         has_custom_name: Optional[bool] = None,
         hydrate: bool = False,
+        tag: Optional[str] = None,
     ) -> Page[ArtifactResponse]:
         """Get a list of artifacts.
 
@@ -2728,6 +2732,7 @@ class Client(metaclass=ClientMetaClass):
             has_custom_name: Filter artifacts with/without custom names.
             hydrate: Flag deciding whether to hydrate the output model(s)
                 by including metadata fields in the response.
+            tag: Filter artifacts by tag.
 
         Returns:
             A list of artifacts.
@@ -2742,6 +2747,7 @@ class Client(metaclass=ClientMetaClass):
             updated=updated,
             name=name,
             has_custom_name=has_custom_name,
+            tag=tag,
         )
         return self.zen_store.list_artifacts(
             artifact_filter_model,
@@ -2865,6 +2871,7 @@ class Client(metaclass=ClientMetaClass):
         only_unused: Optional[bool] = False,
         has_custom_name: Optional[bool] = None,
         hydrate: bool = False,
+        tag: Optional[str] = None,
     ) -> Page[ArtifactVersionResponse]:
         """Get a list of artifact versions.
 
@@ -2892,6 +2899,7 @@ class Client(metaclass=ClientMetaClass):
             has_custom_name: Filter artifacts with/without custom names.
             hydrate: Flag deciding whether to hydrate the output model(s)
                 by including metadata fields in the response.
+            tag: A tag to filter by.
 
         Returns:
             A list of artifact versions.
@@ -2917,6 +2925,7 @@ class Client(metaclass=ClientMetaClass):
             user_id=user_id,
             only_unused=only_unused,
             has_custom_name=has_custom_name,
+            tag=tag,
         )
         artifact_version_filter_model.set_scope_workspace(
             self.active_workspace.id
@@ -3585,6 +3594,44 @@ class Client(metaclass=ClientMetaClass):
         logger.debug(f"Fetching the secrets in scope {scope.value}.")
 
         return self.list_secrets(scope=scope, hydrate=hydrate)
+
+    def backup_secrets(
+        self,
+        ignore_errors: bool = True,
+        delete_secrets: bool = False,
+    ) -> None:
+        """Backs up all secrets to the configured backup secrets store.
+
+        Args:
+            ignore_errors: Whether to ignore individual errors during the backup
+                process and attempt to backup all secrets.
+            delete_secrets: Whether to delete the secrets that have been
+                successfully backed up from the primary secrets store. Setting
+                this flag effectively moves all secrets from the primary secrets
+                store to the backup secrets store.
+        """
+        self.zen_store.backup_secrets(
+            ignore_errors=ignore_errors, delete_secrets=delete_secrets
+        )
+
+    def restore_secrets(
+        self,
+        ignore_errors: bool = False,
+        delete_secrets: bool = False,
+    ) -> None:
+        """Restore all secrets from the configured backup secrets store.
+
+        Args:
+            ignore_errors: Whether to ignore individual errors during the
+                restore process and attempt to restore all secrets.
+            delete_secrets: Whether to delete the secrets that have been
+                successfully restored from the backup secrets store. Setting
+                this flag effectively moves all secrets from the backup secrets
+                store to the primary secrets store.
+        """
+        self.zen_store.restore_secrets(
+            ignore_errors=ignore_errors, delete_secrets=delete_secrets
+        )
 
     # --------------------------- Code repositories ---------------------------
 
@@ -4750,6 +4797,7 @@ class Client(metaclass=ClientMetaClass):
         updated: Optional[Union[datetime, str]] = None,
         name: Optional[str] = None,
         hydrate: bool = False,
+        tag: Optional[str] = None,
     ) -> Page[ModelResponse]:
         """Get models by filter from Model Control Plane.
 
@@ -4763,6 +4811,7 @@ class Client(metaclass=ClientMetaClass):
             name: The name of the model to filter by.
             hydrate: Flag deciding whether to hydrate the output model(s)
                 by including metadata fields in the response.
+            tag: The tag of the model to filter by.
 
         Returns:
             A page object with all models.
@@ -4775,11 +4824,11 @@ class Client(metaclass=ClientMetaClass):
             logical_operator=logical_operator,
             created=created,
             updated=updated,
+            tag=tag,
         )
 
         return self.zen_store.list_models(
-            model_filter_model=filter,
-            hydrate=hydrate,
+            model_filter_model=filter, hydrate=hydrate
         )
 
     #################
@@ -4938,6 +4987,7 @@ class Client(metaclass=ClientMetaClass):
         number: Optional[int] = None,
         stage: Optional[Union[str, ModelStages]] = None,
         hydrate: bool = False,
+        tag: Optional[str] = None,
     ) -> Page[ModelVersionResponse]:
         """Get model versions by filter from Model Control Plane.
 
@@ -4955,6 +5005,7 @@ class Client(metaclass=ClientMetaClass):
             stage: stage of the model version.
             hydrate: Flag deciding whether to hydrate the output model(s)
                 by including metadata fields in the response.
+            tag: The tag to filter by.
 
         Returns:
             A page object with all model versions.
@@ -4969,6 +5020,7 @@ class Client(metaclass=ClientMetaClass):
             name=name,
             number=number,
             stage=stage,
+            tag=tag,
         )
 
         return self.zen_store.list_model_versions(
